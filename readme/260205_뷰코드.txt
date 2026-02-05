@@ -1,0 +1,176 @@
+Mock API
+비동기 로그인
+태스크 CRUD
+페이지 라우팅
+전역 상태
+라우터 param 기반 상세 페이지
+React / Vue 각각 동일한 기능
+
+────────────────────────────────
+VUE 버전 (Vue 3 + TypeScript + Pinia + Vue Router)
+────────────────────────────────
+// src/api/mockApi.ts
+import { Task } from '../stores/task';
+
+let tasks: Task[] = [
+  { id: 1, title: 'Task 1', description: 'Desc 1', status: 'TODO' }
+];
+
+export const loginApi = () =>
+  new Promise(resolve => setTimeout(() => resolve(true), 500));
+
+export const fetchTasksApi = () =>
+  new Promise<Task[]>(resolve => setTimeout(() => resolve([...tasks]), 500));
+
+export const saveTaskApi = (task: Task) =>
+  new Promise<void>(resolve => {
+    tasks = tasks.some(t => t.id === task.id)
+      ? tasks.map(t => t.id === task.id ? task : t)
+      : [...tasks, task];
+    resolve();
+  });
+
+export const deleteTaskApi = (id: number) =>
+  new Promise<void>(resolve => {
+    tasks = tasks.filter(t => t.id !== id);
+    resolve();
+  });
+
+
+────────────────────────────────
+// src/stores/task.ts
+import { defineStore } from 'pinia';
+import * as api from '../api/mockApi';
+
+export interface Task {
+  id: number;
+  title: string;
+  description: string;
+  status: 'TODO' | 'IN_PROGRESS' | 'DONE';
+}
+
+export const useTaskStore = defineStore('task', {
+  state: () => ({
+    isLoggedIn: false,
+    tasks: [] as Task[]
+  }),
+
+  actions: {
+    async login() {
+      await api.loginApi();
+      this.isLoggedIn = true;
+    },
+
+    async fetchTasks() {
+      this.tasks = await api.fetchTasksApi();
+    },
+
+    async saveTask(task: Task) {
+      await api.saveTaskApi(task);
+      this.fetchTasks();
+    },
+
+    async deleteTask(id: number) {
+      await api.deleteTaskApi(id);
+      this.fetchTasks();
+    }
+  }
+});
+
+────────────────────────────────
+// src/router/index.ts
+import { createRouter, createWebHistory } from 'vue-router';
+import Login from '../pages/Login.vue';
+import Tasks from '../pages/Tasks.vue';
+import TaskDetail from '../pages/TaskDetail.vue';
+import { useTaskStore } from '../stores/task';
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/login', component: Login },
+    { path: '/tasks', component: Tasks },
+    { path: '/tasks/:id', component: TaskDetail }
+  ]
+});
+
+router.beforeEach((to, _, next) => {
+  const store = useTaskStore();
+  if (to.path !== '/login' && !store.isLoggedIn) next('/login');
+  else next();
+});
+
+export default router;
+
+────────────────────────────────
+<!-- src/pages/Login.vue -->
+<script setup lang="ts">
+import { useRouter } from 'vue-router';
+import { useTaskStore } from '../stores/task';
+const store = useTaskStore();
+const router = useRouter();
+const login = async () => {
+  await store.login();
+  router.push('/tasks');
+};
+</script>
+
+<template>
+  <button @click="login">Login</button>
+</template>
+
+────────────────────────────────
+<!-- src/pages/Tasks.vue -->
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import { useTaskStore } from '../stores/task';
+const store = useTaskStore();
+const title = ref('');
+
+onMounted(store.fetchTasks);
+
+const add = () => {
+  store.saveTask({
+    id: Date.now(),
+    title: title.value,
+    description: '',
+    status: 'TODO'
+  });
+  title.value = '';
+};
+</script>
+
+<template>
+  <input v-model="title" />
+  <button @click="add">Add</button>
+
+  <ul>
+    <li v-for="t in store.tasks" :key="t.id">
+      <router-link :to="`/tasks/${t.id}`">{{ t.title }}</router-link>
+      <button @click="store.deleteTask(t.id)">X</button>
+    </li>
+  </ul>
+</template>
+
+────────────────────────────────
+<!-- src/pages/TaskDetail.vue -->
+<script setup lang="ts">
+import { useRoute } from 'vue-router';
+import { useTaskStore } from '../stores/task';
+
+const route = useRoute();
+const store = useTaskStore();
+const task = store.tasks.find(t => t.id === Number(route.params.id));
+</script>
+
+<template>
+  <div v-if="task">
+    <h2>{{ task.title }}</h2>
+    <select v-model="task.status" @change="store.saveTask(task)">
+      <option value="TODO">TODO</option>
+      <option value="IN_PROGRESS">IN_PROGRESS</option>
+      <option value="DONE">DONE</option>
+    </select>
+  </div>
+</template>
+────────────────────────────────

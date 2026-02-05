@@ -1,0 +1,239 @@
+Mock API
+비동기 로그인
+태스크 CRUD
+페이지 라우팅
+전역 상태
+라우터 param 기반 상세 페이지
+React / Vue 각각 동일한 기능
+
+────────────────────────────────
+REACT 버전 (React + TypeScript + Zustand + React Router)
+────────────────────────────────
+
+// src/api/mockApi.ts
+import { Task } from '../types/task';
+
+let tasks: Task[] = [
+  { id: 1, title: 'Task 1', description: 'Desc 1', status: 'TODO' },
+  { id: 2, title: 'Task 2', description: 'Desc 2', status: 'IN_PROGRESS' }
+];
+
+export const mockLogin = (id: string, pw: string) =>
+  new Promise<boolean>((resolve) =>
+    setTimeout(() => resolve(id !== '' && pw !== ''), 500)
+  );
+
+export const fetchTasksApi = () =>
+  new Promise<Task[]>((resolve) =>
+    setTimeout(() => resolve([...tasks]), 500)
+  );
+
+export const createTaskApi = (task: Task) =>
+  new Promise<void>((resolve) =>
+    setTimeout(() => {
+      tasks.push(task);
+      resolve();
+    }, 300)
+  );
+
+export const updateTaskApi = (task: Task) =>
+  new Promise<void>((resolve) =>
+    setTimeout(() => {
+      tasks = tasks.map(t => t.id === task.id ? task : t);
+      resolve();
+    }, 300)
+  );
+
+export const deleteTaskApi = (id: number) =>
+  new Promise<void>((resolve) =>
+    setTimeout(() => {
+      tasks = tasks.filter(t => t.id !== id);
+      resolve();
+    }, 300)
+  );
+────────────────────────────────
+// src/types/task.ts
+export interface Task {
+  id: number;
+  title: string;
+  description: string;
+  status: 'TODO' | 'IN_PROGRESS' | 'DONE';
+}
+────────────────────────────────
+// src/store/useTaskStore.ts
+import { create } from 'zustand';
+import { Task } from '../types/task';
+import * as api from '../api/mockApi';
+
+interface Store {
+  isLoggedIn: boolean;
+  tasks: Task[];
+  login: (id: string, pw: string) => Promise<void>;
+  fetchTasks: () => Promise<void>;
+  addTask: (task: Task) => Promise<void>;
+  updateTask: (task: Task) => Promise<void>;
+  deleteTask: (id: number) => Promise<void>;
+}
+
+export const useTaskStore = create<Store>((set, get) => ({
+  isLoggedIn: false,
+  tasks: [],
+
+  login: async (id, pw) => {
+    const ok = await api.mockLogin(id, pw);
+    if (ok) set({ isLoggedIn: true });
+  },
+
+  fetchTasks: async () => {
+    const data = await api.fetchTasksApi();
+    set({ tasks: data });
+  },
+
+  addTask: async (task) => {
+    await api.createTaskApi(task);
+    get().fetchTasks();
+  },
+
+  updateTask: async (task) => {
+    await api.updateTaskApi(task);
+    get().fetchTasks();
+  },
+
+  deleteTask: async (id) => {
+    await api.deleteTaskApi(id);
+    get().fetchTasks();
+  }
+}));
+
+
+────────────────────────────────
+// src/App.tsx
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+import Tasks from './pages/Tasks';
+import TaskDetail from './pages/TaskDetail';
+import { useTaskStore } from './store/useTaskStore';
+
+function Guard({ children }: { children: JSX.Element }) {
+  const ok = useTaskStore(s => s.isLoggedIn);
+  return ok ? children : <Navigate to="/login" />;
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/tasks" element={<Guard><Tasks /></Guard>} />
+        <Route path="/tasks/:id" element={<Guard><TaskDetail /></Guard>} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+────────────────────────────────
+// src/pages/Login.tsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTaskStore } from '../store/useTaskStore';
+
+export default function Login() {
+  const [id, setId] = useState('');
+  const [pw, setPw] = useState('');
+  const login = useTaskStore(s => s.login);
+  const nav = useNavigate();
+
+  const submit = async () => {
+    await login(id, pw);
+    nav('/tasks');
+  };
+
+  return (
+    <div>
+      <input value={id} onChange={e => setId(e.target.value)} />
+      <input value={pw} onChange={e => setPw(e.target.value)} type="password" />
+      <button onClick={submit}>Login</button>
+    </div>
+  );
+}
+
+────────────────────────────────
+// src/pages/Tasks.tsx
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useTaskStore } from '../store/useTaskStore';
+
+export default function Tasks() {
+  const { tasks, fetchTasks, addTask, deleteTask } = useTaskStore();
+  const [title, setTitle] = useState('');
+
+  useEffect(() => { fetchTasks(); }, []);
+
+  const add = () => {
+    addTask({
+      id: Date.now(),
+      title,
+      description: '',
+      status: 'TODO'
+    });
+    setTitle('');
+  };
+
+  return (
+    <div>
+      <input value={title} onChange={e => setTitle(e.target.value)} />
+      <button onClick={add}>Add</button>
+
+      <ul>
+        {tasks.map(t => (
+          <li key={t.id}>
+            <Link to={`/tasks/${t.id}`}>{t.title}</Link>
+            <button onClick={() => deleteTask(t.id)}>X</button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+────────────────────────────────
+// src/pages/TaskDetail.tsx
+import { useParams } from 'react-router-dom';
+import { useTaskStore } from '../store/useTaskStore';
+
+export default function TaskDetail() {
+  const { id } = useParams();
+  const { tasks, updateTask } = useTaskStore();
+  const task = tasks.find(t => t.id === Number(id));
+
+  if (!task) return null;
+
+  return (
+    <div>
+      <h2>{task.title}</h2>
+      <select
+        value={task.status}
+        onChange={e =>
+          updateTask({ ...task, status: e.target.value as any })
+        }
+      >
+        <option value="TODO">TODO</option>
+        <option value="IN_PROGRESS">IN_PROGRESS</option>
+        <option value="DONE">DONE</option>
+      </select>
+    </div>
+  );
+}
+
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────

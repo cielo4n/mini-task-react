@@ -1,0 +1,13 @@
+npm create vite@latest mini-react -- --template react-ts
+npm install react-router-dom
+npm install zustand
+
+npm create vite@latest mini-vue -- --template vue-ts
+npm install vue-router@4
+npm install pinia
+
+
+https://github.com/cielo4n/mini-task-react.git
+https://github.com/cielo4n/mini-task-vue.git
+
+https://git-scm.com/install/windows
