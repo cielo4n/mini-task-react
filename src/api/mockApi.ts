@@ -12,13 +12,6 @@ export const loginApi = (loginId: string, password: string) => {
         });
     });
 };
-export const logoutApi = () => {
-    return new Promise<boolean>((resolve, reject) => {
-        setTimeout(()=>{
-            resolve(false);
-        });
-    });
-};
 
 export const fetchTasksApi = () => {
     // async 붙임 (Promise resolve 호출)

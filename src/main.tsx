@@ -7,6 +7,7 @@ import Login from '@/pages/Login.tsx'
 import Tasks from '@/pages/Tasks.tsx'
 import TaskDetail from '@/pages/TaskDetail.tsx'
 import { useTaskStore } from './store/useTaskStore.ts'
+import Layout from './layouts/layout.tsx'
 
 const Guard = function({ children }: { children: JSX.Element}){
   const isLoggedIn = useTaskStore(s=>s.isLoggedIn);
@@ -18,10 +19,12 @@ ReactDOM.createRoot(root!).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/tasks" element={<Guard><Tasks /></Guard>} />
-        <Route path="/tasks/:id" element={<Guard><TaskDetail /></Guard>} />
-        <Route path="/" element={<App />} />
+        <Route element={<Layout/>}>
+          <Route path="/login" element={<Login />} />
+          <Route path="/tasks" element={<Guard><Tasks /></Guard>} />
+          <Route path="/tasks/:id" element={<Guard><TaskDetail /></Guard>} />
+          <Route path="/" element={<App />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   </StrictMode>

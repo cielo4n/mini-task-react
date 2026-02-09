@@ -1,6 +1,7 @@
 ========================================
 작성 순서 (실무 기준)
 ========================================
+타입->API->스토어->라우터->페이지
 
 1. 프로젝트 생성
 - React 또는 Vue 프로젝트 생성
@@ -48,6 +49,71 @@
 - 제출용 구조 점검
 
 ────────────────────────────────
+========================================
+프로젝트 폴더 구조
+========================================
+mini-jira/
+│
+├─ src/
+│  ├─ app/                  # React 전역 상태 (Zustand)
+│  │   └─ store.ts
+│  ├─ stores/               # Vue 전역 상태 (Pinia)
+│  │   └─ task.ts
+│  ├─ components/
+│  │   └─ TaskItem.tsx / TaskItem.vue
+│  ├─ pages/
+│  │   ├─ Login.tsx / Login.vue
+│  │   ├─ Tasks.tsx / Tasks.vue
+│  │   └─ TaskDetail.tsx / TaskDetail.vue
+│  ├─ router/               # Vue Router
+│  │   └─ index.ts
+│  ├─ types/                # React 타입
+│  │   └─ task.ts
+│  └─ App.tsx / App.vue
+│
+├─ package.json
+└─ tsconfig.json
+
+----------------------------
+React
+
+src
+ㄴapi
+  ㄴmockApi.ts
+
+ㄴtypes
+  ㄴtask.ts
+
+ㄴstore
+  ㄴuseTaskStore.ts
+
+ㄴpages
+  ㄴLogin.tsx
+  ㄴTasks.tsx
+  ㄴTaskDetail.tsx
+
+ㄴApp.tsx
+
+----------------------------
+
+Vue
+
+src
+ㄴapi
+  ㄴmockApi.ts
+
+ㄴstores
+  ㄴtask.ts
+
+ㄴpages
+  ㄴLogin.vue
+  ㄴTasks.vue
+  ㄴTaskDetail.vue
+
+ㄴrouter
+  ㄴindex.ts
+
+ㄴApp.vue
 
 ========================================
 실무에서 공통 CSS 만드는 타이밍

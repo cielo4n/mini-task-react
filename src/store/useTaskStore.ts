@@ -6,7 +6,6 @@ type TaskStore = {
     isLoggedIn: boolean;
     tasks: Task[];
     login: (loginId: string, password: string) => Promise<void>;
-    logout: () => Promise<void>;
     fetchTasks: () => Promise<void>;
     createTask: (task: Task) => Promise<void>;
     updateTask: (task: Task) => Promise<void>;
@@ -23,26 +22,20 @@ export const useTaskStore = create<TaskStore>((set, get)=>({
             set({ isLoggedIn: true});
         }
     },
-    logout: async () => {
-        const rst = await api.logoutApi();
-        if(rst == false){
-            set({isLoggedIn: false});
-        }
-    },
     fetchTasks: async () => {    
         const rst = await api.fetchTasksApi();
         set({tasks: rst});
     },
     createTask: async (task) => {
         await api.createTaskApi(task);
-        get().fetchTasks();
+        await get().fetchTasks();
     },
     updateTask: async (task) => {    
         await api.updateTaskApi(task);
-        get().fetchTasks();
+        await get().fetchTasks();
     },
     deleteTask: async (id) => {    
         await api.deleteTaskApi(id);
-        get().fetchTasks();
+        await get().fetchTasks();
     }
 }));
