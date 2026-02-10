@@ -1,0 +1,336 @@
+Vue는 “페이지 중심 설계”, React는 “상태 중심 설계”다
+
+────────────────────────────────
+Vue의 출발점 → 라우터
+“URL = 화면의 정체성”
+
+페이지는 라우트로 정의됨
+컴포넌트는 라우트에 종속됨
+인증/권한도 라우터 레벨에서 처리
+
+(라우터 → 상태 → UI)
+( 라우터 -> api -> 스토어 -> 페이지 )
+
+────────────────────────────────
+1. 프로젝트 생성 & 기본 세팅
+2. 라우터 설치 및 기본 라우트 구성
+3. Auth Store + 인증 흐름 완성 + localStorage 복원
+4. Route Guard 구현 (권한 제어) (meta 기반)
+5. Mock API 먼저 작성
+6. Task Store 작성 (전역 상태의 중심)
+7. Task List 페이지 → 컴포넌트 분리 (부모 = 상태 / 자식 = UI)
+8. Task Detail (route param) Route Param 기반 상세 페이지
+9. Task Form + validation 분리 (검증 로직은 컴포넌트 밖)
+10. Optimistic Update 적용
+11. 공통 컴포넌트 정리
+
+────────────────────────────────
+1. 프로젝트 생성 & 기본 세팅
+===============================================================
+npm create vite@latest mini-task-manager-vue -- --template vue-ts
+cd mini-task-manager-vue
+npm install
+npm install pinia vue-router
+
+// main.ts
+createApp(App)
+  .use(createPinia())
+  .use(router)
+  .mount('#app')
+
+
+────────────────────────────────
+2. 라우터 설치 및 기본 라우트 구성
+===============================================================
+// router/index.ts
+const routes = [
+  { path: '/login', component: LoginView },
+  {
+    path: '/tasks',
+    component: TaskListView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/tasks/:id',
+    component: TaskDetailView,
+    meta: { requiresAuth: true },
+  },
+]
+
+────────────────────────────────
+3. Auth Store + 인증 흐름 완성 + localStorage 복원
+===============================================================
+
+// stores/auth.store.ts
+export const useAuthStore = defineStore('auth', {
+  state: () => ({
+    isLoggedIn: false,
+  }),
+  actions: {
+    login() {
+      this.isLoggedIn = true
+      localStorage.setItem('isLoggedIn', 'true')
+    },
+    logout() {
+      this.isLoggedIn = false
+      localStorage.removeItem('isLoggedIn')
+    },
+    restore() {
+      this.isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
+    },
+  },
+})
+
+//main.ts
+useAuthStore().restore()
+
+
+────────────────────────────────
+4. Route Guard 구현 (권한 제어) (meta 기반)
+===============================================================
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (to.meta.requiresAuth && !auth.isLoggedIn) {
+    return '/login'
+  }
+})
+
+────────────────────────────────
+5. Mock API 먼저 작성
+===============================================================
+// api/task.api.ts
+export const fetchTasks = () =>
+  new Promise(resolve =>
+    setTimeout(() => resolve(mockTasks), 500)
+  )
+
+────────────────────────────────
+6. Task Store 작성 (전역 상태의 중심)
+===============================================================
+// stores/task.store.ts
+export const useTaskStore = defineStore('task', {
+  state: () => ({
+    tasks: [] as Task[],
+  }),
+  actions: {
+    async loadTasks() {
+      this.tasks = await fetchTasks()
+    },
+  },
+})
+
+────────────────────────────────
+7. Task List 페이지 → 컴포넌트 분리 (부모 = 상태 / 자식 = UI)
+===============================================================
+// views/TaskListView.vue
+<script setup lang="ts">
+const store = useTaskStore()
+onMounted(store.loadTasks)
+</script>
+
+<template>
+  <TaskList :tasks="store.tasks" />
+</template>
+
+
+// components/task/TaskList.vue
+<script setup lang="ts">
+defineProps<{ tasks: Task[] }>()
+</script>
+
+────────────────────────────────
+8. Task Detail (route param) Route Param 기반 상세 페이지
+===============================================================
+// TaskDetailView.vue
+const route = useRoute()
+const task = computed(() =>
+  store.tasks.find(t => t.id === Number(route.params.id))
+)
+
+
+────────────────────────────────
+9. Task Form + validation 분리 (검증 로직은 컴포넌트 밖)
+===============================================================
+
+// composables/useFormValidation.ts
+export function useFormValidation() {
+  const errors = ref({})
+  const validate = (title: string) => !!title
+  return { errors, validate }
+}
+
+// TaskForm.vue
+<script setup>
+const { validate } = useFormValidation()
+</script>
+
+────────────────────────────────
+10. Optimistic Update 적용
+===============================================================
+
+// task.store.ts
+async addTask(task: Task) {
+  this.tasks.push(task)
+  try {
+    await createTask(task)
+  } catch {
+    this.tasks.pop()
+  }
+}
+
+────────────────────────────────
+11. 공통 컴포넌트 정리
+===============================================================
+BaseButton.vue
+BaseInput.vue
+AppLayout.vue
+
+────────────────────────────────
+12. 전체 흐름 점검 체크리스트
+===============================================================
+- 로그인 → 새로고침 → 유지됨
+- 비로그인 상태 보호 라우트 차단
+- CRUD 정상 동작
+- 상태는 Pinia 단일 출처
+- 라우터와 상태 역할 분리
+
+
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+
+Vue   → composable + route meta 중심
+
+────────────────────────────────
+// stores/auth.ts
+import { defineStore } from 'pinia'
+
+export const useAuthStore = defineStore('auth', {
+  state: () => ({
+    isLoggedIn: Boolean(localStorage.getItem('auth'))
+  }),
+  actions: {
+    login() {
+      localStorage.setItem('auth', 'true')
+      this.isLoggedIn = true
+    },
+    logout() {
+      localStorage.removeItem('auth')
+      this.isLoggedIn = false
+    }
+  }
+})
+
+────────────────────────────────
+// stores/task.ts
+import { defineStore } from 'pinia'
+
+export const useTaskStore = defineStore('task', {
+  state: () => ({
+    tasks: [],
+    isLoading: false,
+    error: null
+  }),
+
+  actions: {
+    async fetchTasks() {
+      this.isLoading = true
+      this.tasks = await mockFetchTasks()
+      this.isLoading = false
+    },
+
+    async addTaskOptimistic(task) {
+      const prev = [...this.tasks]
+      this.tasks.push(task)
+
+      try {
+        await mockCreateTask(task)
+      } catch {
+        this.tasks = prev
+      }
+    },
+
+    deleteTask(id) {
+      this.tasks = this.tasks.filter(t => t.id !== id)
+    }
+  }
+})
+
+────────────────────────────────
+// composables/useTaskForm.ts
+import { ref } from 'vue'
+
+export function useTaskForm() {
+  const error = ref<string | null>(null)
+
+  const validate = (value: string) => {
+    if (!value) {
+      error.value = '필수 입력'
+      return false
+    }
+    error.value = null
+    return true
+  }
+
+  return { error, validate }
+}
+
+
+────────────────────────────────
+// router/index.ts
+import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: '/login', component: Login },
+    {
+      path: '/tasks',
+      component: Tasks,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/tasks/:id',
+      component: TaskDetail,
+      meta: { requiresAuth: true }
+    }
+  ]
+})
+
+router.beforeEach((to) => {
+  const auth = useAuthStore()
+  if (to.meta.requiresAuth && !auth.isLoggedIn) {
+    return '/login'
+  }
+})
+
+export default router
+
+────────────────────────────────
+<!-- components/TaskItem.vue -->
+<script setup>
+defineProps<{ task: any }>()
+const emit = defineEmits(['delete'])
+</script>
+
+<template>
+  <div>
+    <span>{{ task.title }}</span>
+    <button @click="emit('delete', task.id)">삭제</button>
+  </div>
+</template>
+
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+
+

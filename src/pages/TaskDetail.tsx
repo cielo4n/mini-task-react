@@ -1,17 +1,18 @@
-import { useParams } from "react-router-dom"
-import { useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom"
 import { useTaskStore } from "@/store/useTaskStore";
-import { useEffect, useRef, useState } from "react";
-import { updateTaskApi } from "@/api/mockApi";
+import { useEffect } from "react";
 import type { Task } from "@/types/task";
 
 export default function TaskDetail(){
     let { id } = useParams<{id: string}>();
-    const navigate = useNavigate();
-    const fetchTasks = useTaskStore(state=>state.fetchTasks);
-    const updateTask = useTaskStore(state=>state.updateTask);
-    const tasks = useTaskStore(state=>state.tasks);
+    const tasks = useTaskStore(state=> state.tasks);
+    const fetchTasks = useTaskStore(state=> state.fetchTasks);
+    const updateTask = useTaskStore(state=> state.updateTaskOptimistic);
+
     const task = tasks.find((it) => (String)(it.id) === id);
+
+    if(!task) return null;
+    
     console.log("-- re2");
     
     useEffect(()=>{
@@ -22,19 +23,17 @@ export default function TaskDetail(){
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newStatus = e.target.value as Task['status'];
         if(task){
             updateTask({
                 ...task,
-                status: newStatus
+                status: e.target.value as Task['status']
             });
         }
     }
 
     return (
         <>
-            <div>Task Detail... {id}</div>
-            {task && 
+            <div>Task Detail...</div>
             <div style={{width:300, display:'flex', flexDirection: 'column', gap:10, textAlign:'left'}}>
                 <div>
                     <div style={{borderBottom:'1px solid lightgray'}}>Title</div>
@@ -53,9 +52,8 @@ export default function TaskDetail(){
                     </select>
                 </div>
             </div>
-            }
-            <div style={{textAlign:'right' as const}}>
-                <button style={{fontSize: '0.7em'}} onClick={()=>navigate('/tasks')}>목록</button>
+            <div style={{textAlign:'right' as const, fontSize:'0.8em'}}>
+                <Link to={`/tasks`}>목록</Link>
             </div> 
         </>
     )

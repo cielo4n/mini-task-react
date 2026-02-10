@@ -3,39 +3,68 @@ import type { Task } from '@/types/task'
 import * as api from '@/api/mockApi';
 
 type TaskStore = {
-    isLoggedIn: boolean;
     tasks: Task[];
-    login: (loginId: string, password: string) => Promise<void>;
     fetchTasks: () => Promise<void>;
+    createTaskOptimistic: (task: Task) => Promise<void>;
+    updateTaskOptimistic: (task: Task) => Promise<void>;
+    deleteTaskOptimistic: (id: number) => Promise<void>;
     createTask: (task: Task) => Promise<void>;
     updateTask: (task: Task) => Promise<void>;
     deleteTask: (id: number) => Promise<void>;
+    isLoading: boolean;
 }
 
 export const useTaskStore = create<TaskStore>((set, get)=>({
-    isLoggedIn: false,
     tasks: [],
+    isLoading: false,
 
-    login: async (loginId: string, password: string) => {
-        const rst = await api.loginApi(loginId, password);
-        if(rst == true){
-            set({ isLoggedIn: true});
+    fetchTasks: async () => {
+        set({isLoading: true});
+        const data = await api.fetchTasksApi();
+        set({tasks: data, isLoading: false});
+    },
+    // 사용자가 즉각적인 반응을 요구하고, 실패해도 이전값으로 되돌릴수있다면 Optimistic 사용 (선택적)
+    createTaskOptimistic: async (task)=> {
+        const prev = get().tasks;
+        set({tasks: [...prev, task]})
+
+        try{
+            await api.createTaskApi(task);
+        } catch {
+            set({tasks: prev})
         }
     },
-    fetchTasks: async () => {    
-        const rst = await api.fetchTasksApi();
-        set({tasks: rst});
+    updateTaskOptimistic: async (task)=> {
+        const prev = get().tasks;
+        const next = prev.map((t)=>(t.id === task.id ? task : t));
+        set({tasks: next})
+
+        try{
+            await api.updateTaskApi(task);
+        } catch {            
+            set({tasks: prev})
+        }
+    },
+    deleteTaskOptimistic: async (id)=> {
+        const prev = get().tasks;
+        const next = prev.filter((t)=>(t.id !== id));
+        set({tasks:next});
+        try{
+            await api.deleteTaskApi(id);
+        } catch {
+            set({tasks: prev})
+        }
     },
     createTask: async (task) => {
         await api.createTaskApi(task);
-        await get().fetchTasks();
+        get().fetchTasks();
     },
     updateTask: async (task) => {    
         await api.updateTaskApi(task);
-        await get().fetchTasks();
+        get().fetchTasks();
     },
     deleteTask: async (id) => {    
         await api.deleteTaskApi(id);
-        await get().fetchTasks();
+        get().fetchTasks();
     }
 }));

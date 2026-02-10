@@ -1,0 +1,358 @@
+Vue는 “페이지 중심 설계”, React는 “상태 중심 설계”다
+
+────────────────────────────────
+React의 출발점 → 상태 + 컴포넌트
+“UI는 상태의 결과물”
+
+컴포넌트가 중심
+라우터는 컴포넌트 트리 위의 껍데기
+상태 관리가 먼저 있어야 컴포넌트를 만들 수 있음
+
+( 상태 → UI → 라우터 )
+( api -> 스토어 -> 라우터 -> 페이지 )
+
+────────────────────────────────
+
+0. 프로젝트 초기화
+1. 타입 정의
+2. Mock API 작성
+3. 전역 Store 작성 (도메인부터)
+4. Router 구조 작성 (페이지 뼈대만)
+5. Page 컴포넌트 작성 (로직 위주)
+6. UI Component 작성 (presentational)
+7. Form Validation Hook 추가
+8. 디테일 보완
+
+────────────────────────────────
+0. 프로젝트 초기화
+===============================================================
+npm create vite@latest mini-task-manager -- --template react-ts
+cd mini-task-manager
+npm install
+npm install react-router-dom zustand
+
+
+────────────────────────────────
+1. 타입 정의
+===============================================================
+// src/types/task.ts
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'
+
+export interface Task {
+  id: number
+  title: string
+  status: TaskStatus
+}
+
+
+────────────────────────────────
+2. Mock API 작성
+===============================================================
+// src/api/task.ts
+import type { Task } from '@/types/task'
+
+let tasks: Task[] = []
+
+export const mockFetchTasks = () =>
+  new Promise<Task[]>(resolve => {
+    setTimeout(() => resolve(tasks), 300)
+  })
+
+export const mockCreateTask = (task: Task) =>
+  new Promise<void>((resolve, reject) => {
+    setTimeout(() => {
+      tasks.push(task)
+      resolve()
+    }, 300)
+  })
+
+────────────────────────────────
+3. 전역 Store 작성 (도메인부터)
+===============================================================
+3-1. AuthStore
+// src/store/useAuthStore.ts
+import { create } from 'zustand'
+
+export const useAuthStore = create(set => ({
+  isLoggedIn: Boolean(localStorage.getItem('auth')),
+  login: () => {
+    localStorage.setItem('auth', 'true')
+    set({ isLoggedIn: true })
+  },
+  logout: () => {
+    localStorage.removeItem('auth')
+    set({ isLoggedIn: false })
+  }
+}))
+
+3-2. Task Store (optimistic 포함)
+// src/store/useTaskStore.ts
+import { create } from 'zustand'
+import { mockFetchTasks, mockCreateTask } from '@/api/task'
+
+export const useTaskStore = create((set, get) => ({
+  tasks: [],
+  isLoading: false,
+
+  fetchTasks: async () => {
+    set({ isLoading: true })
+    const data = await mockFetchTasks()
+    set({ tasks: data, isLoading: false })
+  },
+
+  addTaskOptimistic: async (task) => {
+    const prev = get().tasks
+    set({ tasks: [...prev, task] })
+
+    try {
+      await mockCreateTask(task)
+    } catch {
+      set({ tasks: prev })
+    }
+  }
+}))
+
+
+────────────────────────────────
+4. Router 구조 작성 (페이지 뼈대만)
+===============================================================
+4-1. Router 구조
+// src/router/index.tsx
+import { Routes, Route } from 'react-router-dom'
+import { AuthGuard } from './AuthGuard'
+
+<Routes>
+  <Route path="/login" element={<Login />} />
+  <Route element={<AuthGuard />}>
+    <Route path="/tasks" element={<Tasks />} />
+    <Route path="/tasks/:id" element={<TaskDetail />} />
+  </Route>
+</Routes>
+
+4-2.AuthGuard
+// src/router/AuthGuard.tsx
+import { Outlet, Navigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/useAuthStore'
+
+export function AuthGuard() {
+  const isLoggedIn = useAuthStore(s => s.isLoggedIn)
+  return isLoggedIn ? <Outlet /> : <Navigate to="/login" />
+}
+
+
+────────────────────────────────
+5. Page 컴포넌트 작성 (로직 위주)
+===============================================================
+5-1. Login Page
+
+// src/pages/Login.tsx
+import { useAuthStore } from '@/store/useAuthStore'
+import { useNavigate } from 'react-router-dom'
+
+export default function Login() {
+  const login = useAuthStore(s => s.login)
+  const navigate = useNavigate()
+
+  const handleLogin = () => {
+    login()
+    navigate('/tasks')
+  }
+
+  return <button onClick={handleLogin}>로그인</button>
+}
+
+
+5-2. Task Page
+// src/pages/Tasks.tsx
+import { useEffect } from 'react'
+import { useTaskStore } from '@/store/useTaskStore'
+import { TaskList } from '@/components/TaskList'
+
+export default function Tasks() {
+  const { tasks, fetchTasks } = useTaskStore()
+
+  useEffect(() => {
+    fetchTasks()
+  }, [])
+
+  return <TaskList tasks={tasks} />
+}
+
+────────────────────────────────
+6. UI Component 작성 (presentational)
+===============================================================
+
+// src/components/TaskItem.tsx
+export function TaskItem({ task, onDelete }) {
+  return (
+    <div>
+      {task.title}
+      <button onClick={() => onDelete(task.id)}>삭제</button>
+    </div>
+  )
+}
+
+────────────────────────────────
+7. Form Validation Hook 추가
+===============================================================
+
+// src/hooks/useTaskForm.ts
+import { useState } from 'react'
+
+export function useTaskForm() {
+  const [error, setError] = useState<string | null>(null)
+
+  const validate = (value: string) => {
+    if (!value) {
+      setError('필수')
+      return false
+    }
+    setError(null)
+    return true
+  }
+
+  return { error, validate }
+}
+
+
+────────────────────────────────
+8. 디테일 보완
+===============================================================
+
+- optimistic 실패 UI
+- 로딩 스피너
+- 에러 메시지
+- localStorage 동기화 확인
+
+
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+
+React → custom hook + guard component 중심
+
+────────────────────────────────
+
+// store/useAuthStore.ts
+import { create } from 'zustand'
+
+type AuthState = {
+  isLoggedIn: boolean
+  login: () => void
+  logout: () => void
+}
+
+export const useAuthStore = create<AuthState>((set) => ({
+  isLoggedIn: Boolean(localStorage.getItem('auth')),
+  login: () => {
+    localStorage.setItem('auth', 'true')
+    set({ isLoggedIn: true })
+  },
+  logout: () => {
+    localStorage.removeItem('auth')
+    set({ isLoggedIn: false })
+  }
+}))
+
+────────────────────────────────
+
+// store/useTaskStore.ts
+import { create } from 'zustand'
+
+export const useTaskStore = create((set, get) => ({
+  tasks: [],
+  isLoading: false,
+  error: null,
+
+  fetchTasks: async () => {
+    set({ isLoading: true })
+    const data = await mockFetchTasks()
+    set({ tasks: data, isLoading: false })
+  },
+
+  addTaskOptimistic: async (task) => {
+    const prev = get().tasks
+    set({ tasks: [...prev, task] })
+
+    try {
+      await mockCreateTask(task)
+    } catch {
+      set({ tasks: prev })
+    }
+  },
+
+  deleteTask: (id) => {
+    set({ tasks: get().tasks.filter(t => t.id !== id) })
+  }
+}))
+
+────────────────────────────────
+// hooks/useTaskForm.ts
+import { useState } from 'react'
+
+export function useTaskForm() {
+  const [error, setError] = useState<string | null>(null)
+
+  const validate = (value: string) => {
+    if (!value) {
+      setError('필수 입력')
+      return false
+    }
+    setError(null)
+    return true
+  }
+
+  return { error, validate }
+}
+
+────────────────────────────────
+// router/AuthGuard.tsx
+import { Navigate, Outlet } from 'react-router-dom'
+import { useAuthStore } from '@/store/useAuthStore'
+
+export function AuthGuard() {
+  const isLoggedIn = useAuthStore(s => s.isLoggedIn)
+  return isLoggedIn ? <Outlet /> : <Navigate to="/login" />
+}
+
+────────────────────────────────
+// router/index.tsx
+import { Routes, Route } from 'react-router-dom'
+import { AuthGuard } from './AuthGuard'
+
+<Routes>
+  <Route path="/login" element={<Login />} />
+  <Route element={<AuthGuard />}>
+    <Route path="/tasks" element={<Tasks />} />
+    <Route path="/tasks/:id" element={<TaskDetail />} />
+  </Route>
+</Routes>
+
+────────────────────────────────
+// components/TaskItem.tsx
+export function TaskItem({ task, onDelete }) {
+  return (
+    <div>
+      <span>{task.title}</span>
+      <button onClick={() => onDelete(task.id)}>삭제</button>
+    </div>
+  )
+}
+
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────
+────────────────────────────────

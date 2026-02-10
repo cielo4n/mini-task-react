@@ -1,0 +1,134 @@
+========================================
+프로젝트 설계서
+========================================
+
+프로젝트명
+Mini Task Manager SPA
+
+목적
+비동기 로그인부터 태스크 CRUD까지 이어지는 SPA 구조를 구현한다.
+전역 상태 관리와 라우터, 비동기 흐름, 단방향 데이터 흐름을 실습한다.
+
+핵심기능범위
+- 로그인 / 로그아웃
+- 태스크 목록 조회
+- 태스크 생성 / 삭제 (Optimistic Update) : 서버를 기다리지 않고 UI를 먼저 움직여“빠른 앱처럼 느끼게 만드는 UX 전략
+- 태스크 상세 조회
+- 인증 기반 라우팅 제어
+- 새로고침 시 로그인 상태 유지
+
+공통 아키텍처 원칙
+- SPA 구조
+- Mock API 기반 비동기 통신
+- 전역 상태 관리 중심
+- 컴포넌트는 상태를 직접 변경하지 않는다
+- 단방향 데이터 흐름 (props down / events up)
+
+
+[데이터흐름설계]
+Mock API
+  ↓
+Store (도메인 상태 + 비동기 로직)
+  ↓
+Container / Page
+  ↓
+Presentational Component
+
+
+[인증흐름설계]
+Login 성공
+  ↓
+Store.isLoggedIn = true
+  ↓
+localStorage 동기화
+  ↓
+Router Guard 통과
+
+
+========================================
+기술 요소 매핑
+========================================
+────────────────────────────────
+| 기능         | React                | Vue                     |
+| ---------- | -------------------- | ----------------------- |
+| 전역 상태      | Zustand              | Pinia                   |
+| 라우팅        | React Router         | Vue Router              |
+| Auth Guard | Wrapper Component    | route meta + beforeEach |
+| Validation | Custom Hook          | Composable              |
+| Optimistic | Store Action         | Store Action            |
+| Persist    | localStorage hydrate | state + watch           |
+────────────────────────────────
+
+
+
+========================================
+Vue 프로젝트 구조
+========================================
+
+src/
+ ├─ api/
+ │   ├─ auth.ts
+ │   └─ task.ts
+ │
+ ├─ stores/
+ │   ├─ auth.ts
+ │   └─ task.ts
+ │
+ ├─ composables/
+ │   └─ useTaskForm.ts
+ │
+ ├─ router/
+ │   └─ index.ts
+ │
+ ├─ pages/
+ │   ├─ Login.vue
+ │   ├─ Tasks.vue
+ │   └─ TaskDetail.vue
+ │
+ ├─ components/
+ │   ├─ TaskItem.vue
+ │   └─ TaskList.vue
+ │
+ └─ App.vue
+
+
+========================================
+React 프로젝트 구조
+========================================
+
+
+src/
+├─ api/
+│   ├─ auth.ts            # 로그인 / 로그아웃 mock API
+│   └─ task.ts            # 태스크 CRUD mock API
+│
+├─ store/
+│   ├─ useAuthStore.ts    # 인증 상태 (isLoggedIn, login, logout)
+│   └─ useTaskStore.ts    # 태스크 도메인 상태 + optimistic update
+│
+├─ hooks/
+│   └─ useTaskForm.ts     # form validation 로직 분리
+│
+├─ router/
+│   ├─ AuthGuard.tsx      # 인증 보호 라우트 wrapper
+│   └─ index.tsx          # 전체 라우팅 정의
+│
+├─ pages/
+│   ├─ Login.tsx          # 로그인 페이지 (라우팅 단위)
+│   ├─ Tasks.tsx          # 태스크 목록 페이지
+│   └─ TaskDetail.tsx     # 태스크 상세 페이지
+│
+├─ components/
+│   ├─ TaskList.tsx       # 태스크 목록 UI
+│   └─ TaskItem.tsx       # 개별 태스크 UI (presentational)
+│
+├─ types/
+│   └─ task.ts            # Task 타입 정의
+│
+├─ App.tsx                # Router 연결, 전역 레이아웃
+└─ main.tsx               # ReactDOM.createRoot 엔트리
+
+
+
+────────────────────────────────
+────────────────────────────────

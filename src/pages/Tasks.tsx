@@ -1,14 +1,16 @@
+import { useState, useEffect, useRef } from "react";
 import { useTaskStore } from "@/store/useTaskStore";
 import type { Task } from "@/types/task";
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { TaskItem } from "@/components/TaskItem";
+import { useTaskForm } from "@/hooks/useTaskForm";
 
 export default function Tasks(){
-    const tasks = useTaskStore((state)=> state.tasks);
-    const fetchTasks = useTaskStore((state)=> state.fetchTasks);
-    const createTask = useTaskStore((state)=>state.createTask);
-    const deleteTask = useTaskStore((state)=>state.deleteTask);
-    const navigate = useNavigate();
+    const tasks = useTaskStore(state=>state.tasks);
+    const fetchTasks = useTaskStore(state=>state.fetchTasks);
+    const createTask = useTaskStore(state=>state.createTaskOptimistic);
+    const deleteTask = useTaskStore(state=>state.deleteTaskOptimistic);
+
+    const { error, validate } = useTaskForm();
 
     const inputRef = useRef<HTMLInputElement>(null);
     const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
@@ -22,13 +24,17 @@ export default function Tasks(){
 
     const handleAdd = ()=>{
         if(!inputRef.current) return;
-        const value = inputRef.current.value;
-        createTask({
-            id: Date.now(),
-            title: value,
-            status: 'TODO',
-        } as Task);
-        inputRef.current.value= '';
+        const title = inputRef.current.value;
+
+        if(validate(title)){
+            createTask({
+                id: Date.now(),
+                title: title,
+                status: 'TODO',
+            } as Task);
+            inputRef.current.value= '';
+        }
+        
     }
 
     const handleFilter = (text: 'ALL' | 'TODO' | 'IN_PROGRESS' | 'DONE') => {
@@ -53,17 +59,12 @@ export default function Tasks(){
                 <input  style={{flexGrow:1}} type="text" ref={inputRef}/>
                 <button style={{width:60}} onClick={handleAdd}>추가</button>
             </div>
+            <div style={{color:'red', fontSize:'0.6em'}}>{error}</div>
             <div>
                 <div style={{textAlign:'left'}}>Task List</div>
                 {tasks.map((task: Task)=>{
-                    if(selectedFilter == 'ALL' || selectedFilter == task.status){
-                        return (<div style={{display:'flex', flexDirection: 'column', alignItems: 'flex-start'}} key={task.id}>
-                        <div><span>{task.title}</span> <span>({task.status})</span></div>
-                        <div style={{display:'flex', gap:5, fontSize: '0.7em', marginLeft:15}}>
-                            <button onClick={()=>navigate(`/tasks/${task.id}`)}>상세</button>
-                            <button onClick={()=>handleDelete(task.id)}>삭제</button>
-                        </div>
-                        </div>);
+                    if(selectedFilter == 'ALL' || selectedFilter == task.status){                        
+                        return <TaskItem task={task} handleDelete={handleDelete} key={task.id}/>
                     } else {
                         return null;
                     }
