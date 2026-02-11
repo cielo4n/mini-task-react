@@ -30,7 +30,7 @@ export default function Login(){
     
     return (<>
     <div>
-        Login...
+        React Login...
     </div>
     <div style={{width: "250px", display:"flex", flexDirection: "column", gap:"5px"}}>
         <div style={{display:"flex", justifyContent: "space-between"}}>
