@@ -25,13 +25,15 @@ export const useTaskStore = create<TaskStore>((set, get)=>({
     },
     // 사용자가 즉각적인 반응을 요구하고, 실패해도 이전값으로 되돌릴수있다면 Optimistic 사용 (선택적)
     createTaskOptimistic: async (task)=> {
+        console.log("cn")
         const prev = get().tasks;
         set({tasks: [...prev, task]})
 
         try{
-            await api.createTaskApi(task);
-        } catch {
+            await api.createTaskApi(task);           
+        } catch (e){
             set({tasks: prev})
+            throw e
         }
     },
     updateTaskOptimistic: async (task)=> {
@@ -41,8 +43,9 @@ export const useTaskStore = create<TaskStore>((set, get)=>({
 
         try{
             await api.updateTaskApi(task);
-        } catch {            
+        } catch (e){            
             set({tasks: prev})
+            throw e
         }
     },
     deleteTaskOptimistic: async (id)=> {
@@ -51,8 +54,9 @@ export const useTaskStore = create<TaskStore>((set, get)=>({
         set({tasks:next});
         try{
             await api.deleteTaskApi(id);
-        } catch {
+        } catch (e){
             set({tasks: prev})
+            throw e
         }
     },
     createTask: async (task) => {

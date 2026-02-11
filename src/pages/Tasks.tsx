@@ -3,12 +3,14 @@ import { useTaskStore } from "@/store/useTaskStore";
 import type { Task } from "@/types/task";
 import { TaskItem } from "@/components/TaskItem";
 import { useTaskForm } from "@/hooks/useTaskForm";
+import { useToastStore } from "@/store/useToastStore";
 
 export default function Tasks(){
     const tasks = useTaskStore(state=>state.tasks);
     const fetchTasks = useTaskStore(state=>state.fetchTasks);
-    const createTask = useTaskStore(state=>state.createTaskOptimistic);
-    const deleteTask = useTaskStore(state=>state.deleteTaskOptimistic);
+    const createTaskOptimistic = useTaskStore(state=>state.createTaskOptimistic);
+    const deleteTaskOptimistic = useTaskStore(state=>state.deleteTaskOptimistic);
+    const show = useToastStore.getState().show;
 
     const { error, validate } = useTaskForm();
 
@@ -22,17 +24,24 @@ export default function Tasks(){
         fetchTasks();
     }, [])
 
-    const handleAdd = ()=>{
+    const handleAdd = async ()=>{
         if(!inputRef.current) return;
         const title = inputRef.current.value;
 
         if(validate(title)){
-            createTask({
-                id: Date.now(),
-                title: title,
-                status: 'TODO',
-            } as Task);
-            inputRef.current.value= '';
+            try{
+                await createTaskOptimistic({
+                    id: Date.now(),
+                    title: title,
+                    status: 'TODO',
+                } as Task);
+                inputRef.current.value= '';
+                show('추가성공', 'success')
+
+            } catch(e){
+                show('추가실패', 'error')
+                console.log(e);
+            }
         }
         
     }
@@ -42,12 +51,18 @@ export default function Tasks(){
         setSelectedFilter(text);
     }
 
-    const handleDelete= (id: number) => {
-        deleteTask(id);
+    const handleDelete= async (id: number) => {
+        try{
+            await deleteTaskOptimistic(id);
+            show('삭제성공', 'success')
+        } catch(e){
+            show('삭제실패', 'error')
+            console.log(e);
+        }
     }
 
     return (<>
-        <div>Tasks...</div>
+        <div>React Tasks...</div>
         <div style={{width: 400, display:'flex', flexDirection: 'column', gap:5}}>
             <div style={{display:'flex', justifyContent: 'center', gap: 5}}>
                 <button onClick={()=>handleFilter('ALL')}>ALL</button>
@@ -59,7 +74,7 @@ export default function Tasks(){
                 <input  style={{flexGrow:1}} type="text" ref={inputRef}/>
                 <button style={{width:60}} onClick={handleAdd}>추가</button>
             </div>
-            <div style={{color:'red', fontSize:'0.6em'}}>{error}</div>
+            <div style={{color:'red', fontSize:'0.7em'}}>{error}</div>
             <div>
                 <div style={{textAlign:'left'}}>Task List</div>
                 {tasks.map((task: Task)=>{

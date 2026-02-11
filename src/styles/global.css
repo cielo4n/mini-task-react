@@ -15,7 +15,8 @@
 }
 
 #root {
-  margin:auto;
+  margin: auto;
+  text-align: center;
 }
 
 a {

@@ -5,8 +5,8 @@ let tasks: Task[] = [
     {id: 2, title: 'task 2', description: 'desc 2', status: 'IN_PROGRESS'}
 ]
 
-export const loginApi = (loginId: string, password: string) => {
-    return new Promise<boolean>((resolve, reject) => {
+export const loginApi = (_loginId: string, _password: string) => {
+    return new Promise<boolean>((resolve, _reject) => {
         setTimeout(()=>{ 
             resolve(true);
         }, 500);
@@ -14,7 +14,7 @@ export const loginApi = (loginId: string, password: string) => {
 };
 
 export const logoutApi = () => {
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, _reject) => {
         setTimeout(()=>{ 
             resolve();
         }, 500);
@@ -24,7 +24,7 @@ export const logoutApi = () => {
 export const fetchTasksApi = () => {
     // async 붙임 (Promise resolve 호출)
     // executor : (resolve, reject) => {}
-    return new Promise<Task[]>((resolve, reject) => {
+    return new Promise<Task[]>((resolve, _reject) => {
         setTimeout(()=>{ 
             resolve([...tasks]);
         }, 500)
@@ -32,7 +32,7 @@ export const fetchTasksApi = () => {
 };
 
 export const createTaskApi = (task: Task)=>{
-    return new Promise<void>((resolve, reject)=>{
+    return new Promise<void>((resolve, _reject)=>{
         setTimeout(()=>{
             tasks = [...tasks, task]; // tasks.push(task) 보다 참조가 바뀌어서 선호함
             resolve(); 
@@ -41,7 +41,7 @@ export const createTaskApi = (task: Task)=>{
 };
 
 export const updateTaskApi = (task: Task)=>{
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, _reject) => {
         setTimeout(()=>{
             tasks = tasks.map((item) => (task.id == item.id)? task: item );
             resolve();
@@ -50,7 +50,7 @@ export const updateTaskApi = (task: Task)=>{
 };
 
 export const deleteTaskApi = (id: number)=>{
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<void>((resolve, _reject) => {
         setTimeout(()=>{
             tasks = tasks.filter((item)=> item.id !== id);
             resolve();

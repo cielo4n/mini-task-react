@@ -9,7 +9,7 @@ type AuthStore = {
 }
 
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<AuthStore>((set, _get) => ({
     isLoggedIn: Boolean(localStorage.getItem('auth')),
     isLoading: false,
 
@@ -23,8 +23,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({isLoading: false})
     },
     logout: async () => {
-        await logoutApi();
         localStorage.removeItem('auth');
         set({isLoggedIn: false})
+        await logoutApi();
     }
 }))

@@ -2,12 +2,14 @@ import { Link, useParams } from "react-router-dom"
 import { useTaskStore } from "@/store/useTaskStore";
 import { useEffect } from "react";
 import type { Task } from "@/types/task";
+import { useToastStore } from "@/store/useToastStore";
 
 export default function TaskDetail(){
     let { id } = useParams<{id: string}>();
     const tasks = useTaskStore(state=> state.tasks);
     const fetchTasks = useTaskStore(state=> state.fetchTasks);
     const updateTask = useTaskStore(state=> state.updateTaskOptimistic);
+    const show = useToastStore.getState().show;
 
     const task = tasks.find((it) => (String)(it.id) === id);
 
@@ -24,10 +26,18 @@ export default function TaskDetail(){
 
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         if(task){
-            updateTask({
-                ...task,
-                status: e.target.value as Task['status']
-            });
+            try{
+                updateTask({
+                    ...task,
+                    status: e.target.value as Task['status']
+                });
+                show('갱신성공', 'success')
+
+            } catch(e){
+                show('갱신실패', 'error')
+                console.log(e);
+            }
+            
         }
     }
 
